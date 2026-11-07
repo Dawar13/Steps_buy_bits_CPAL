@@ -6,8 +6,11 @@ cd "$(dirname "$0")/.."
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -q --upgrade pip
-pip install -q torch --index-url https://download.pytorch.org/whl/cu128
+pip install -q torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -q -r requirements.txt
+# lpips pulls torchvision from PyPI, which may not match the cu128 torch ("torchvision::nms does not exist")
+pip install -q --force-reinstall --no-deps torchvision --index-url https://download.pytorch.org/whl/cu128
+python -c "import torchvision, transformers.modeling_utils"
 python -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 pytest -q -p no:cacheprovider
 echo "SETUP_DONE $(date -u '+%F %T')"
