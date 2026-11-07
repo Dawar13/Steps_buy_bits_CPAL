@@ -157,9 +157,12 @@ def test_integer_storage_error_within_half_code_step(storage, code_bits):
     st = ResidualStore(storage, torch.float32)
     st.put(r, s)
     back = st.get()
-    step = s.to(torch.bfloat16).float() / 2 ** (code_bits - 1)
+    cmax = 2 ** (code_bits - 1) - 1
+    step = s.to(torch.bfloat16).float() / 2 / cmax  # (s / 2) / (2^(b_r - 1) - 1)
     assert back.shape == r.shape
     assert torch.all((back - r).abs() <= step / 2 * (1 + 1e-4) + 1e-12)
+    codes = torch.round(back / step)
+    assert codes.abs().max() == cmax  # leftovers near s / 2 use the full code range
 
 
 def test_storage_sizes_and_exact_fp32():

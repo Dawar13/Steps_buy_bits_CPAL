@@ -96,6 +96,33 @@ def test_decision_weak_when_sd_only_matches_sr():
     assert decide(_corr(0.8), law, None, CFG)["verdict"] == "WEAK"
 
 
+def test_decision_weak_when_sd_error_not_lower_than_sr():
+    # slopes clearly separated (SD -1, SR -0.5) but SR starts far lower, so at T = 50 SD is not below SR
+    law = _law({"RTN": 0.0, "SR": -0.5, "SD": -1.0}, {"RTN": 0.2, "SR": 0.05, "SD": 0.2},
+               {"RTN": 0.3, "SR": 0.1, "SD": 0.2})
+    res = decide(_corr(0.8), law, None, CFG)
+    assert not res["cells"]["sd_vs_sr"]["overlap"] and res["cells"]["sd_vs_sr"]["not_lower"]
+    assert res["verdict"] == "WEAK"
+
+
+@pytest.mark.parametrize("rtn_slope,status,verdict", [(-0.45, "KILL", "KILL"), (-0.35, "BETWEEN", "UNDECIDED"),
+                                                       (-0.2, "GO", "GO")])
+def test_rtn_premise_rule(rtn_slope, status, verdict):
+    law = _law({"RTN": rtn_slope, "SR": -0.5, "SD": -1.2}, {"RTN": 0.2, "SR": 0.2, "SD": 0.05},
+               {"RTN": 0.3, "SR": 0.25, "SD": 0.1})
+    res = decide(_corr(0.8), law, None, CFG)
+    assert res["cells"]["rtn_slope"]["status"] == status
+    assert res["verdict"] == verdict
+
+
+def test_ratio_uses_unsquared_error():
+    assert CFG["decision"]["ratio_metric"] == "rel_err"
+    law = _law({"RTN": 0.0, "SR": -0.5, "SD": 0.0}, {"RTN": 0.2, "SR": 0.2, "SD": 0.13},
+               {"RTN": 0.3, "SR": 0.25, "SD": 0.1})
+    v = decide(_corr(0.8), law, None, CFG)["cells"]["sd_ratio"]["value"]
+    assert v == pytest.approx(0.65, abs=0.03)  # 0.13 / 0.2, not its square
+
+
 def test_decision_incomplete_and_report_text():
     res = decide(None, None, None, CFG)
     assert res["verdict"] == "INCOMPLETE"

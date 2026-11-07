@@ -1,10 +1,10 @@
 """Metrics for E1: relative latent error, PSNR, LPIPS and the error-versus-steps slope.
 
 Two forms of the latent error are recorded:
-    rel_err_sq = ||z_q - z_FP||^2 / ||z_FP||^2   (the primary metric named in E1_INSTRUCTIONS.md A5)
-    rel_err    = sqrt(rel_err_sq) = ||z_q - z_FP|| / ||z_FP||
-Slopes are fitted on rel_err, because the predicted slopes (0, -1/2, -1 in PROJECT_CONTEXT.md 4.2)
-are for the size of the error, not its square. A fit on rel_err_sq gives exactly twice the slope.
+    rel_err    = ||z_q - z_FP|| / ||z_FP||          (used for every check and slope, decision of 7 Nov 2026)
+    rel_err_sq = rel_err^2                          (the squared form written in E1_INSTRUCTIONS.md A5, kept)
+The predicted slopes (0, -1/2, -1 in PROJECT_CONTEXT.md 4.2) are for the size of the error; a fit on
+rel_err_sq gives exactly twice the slope.
 """
 from __future__ import annotations
 

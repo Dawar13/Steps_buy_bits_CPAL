@@ -88,14 +88,12 @@ class ResidualStore:
 
     fp32  leftover kept in the compute dtype (float32, or float64 for float64 inputs)
     bf16  leftover cast to bfloat16
-    int8  integer codes with step s / 2^(8-1) plus one bf16 scale per group
-    int4  as int8 with step s / 2^(4-1), codes packed two per byte
+    int8  integer codes in [-127, 127] with step (s / 2) / 127, plus one bf16 scale s per group
+    int4  codes in [-7, 7] with step (s / 2) / 7, packed two per byte, plus one bf16 scale per group
 
-    The int step s / 2^(b_r - 1) follows E1_INSTRUCTIONS.md (A1). Because |r| <= s / 2 the codes only
-    reach +-2^(b_r - 2), so one code bit is unused; change STEP_EXPONENT_OFFSET to 2 to use all levels.
+    The step (s / 2) / (2^(b_r - 1) - 1) maps the leftover range |r| <= s / 2 onto the full code range
+    (decision of 7 Nov 2026, replacing the s / 2^(b_r - 1) of E1_INSTRUCTIONS.md A1).
     """
-
-    STEP_EXPONENT_OFFSET = 1  # step = s / 2^(b_r - STEP_EXPONENT_OFFSET)
 
     def __init__(self, storage: str, dtype: torch.dtype):
         if storage not in STORAGES:
@@ -111,7 +109,8 @@ class ResidualStore:
         return {"int8": 8, "int4": 4}[self.storage]
 
     def _step(self, scale_stored: torch.Tensor) -> torch.Tensor:
-        return scale_stored.to(self.dtype) / float(2 ** (self.code_bits - self.STEP_EXPONENT_OFFSET))
+        cmax = 2 ** (self.code_bits - 1) - 1
+        return scale_stored.to(self.dtype) / float(2 * cmax)
 
     def put(self, r: torch.Tensor, s: torch.Tensor) -> None:
         """r: leftover in grouped layout (..., G, g); s: the scale used at this step, shape (..., G, 1)."""

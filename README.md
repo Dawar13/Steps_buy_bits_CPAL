@@ -35,11 +35,11 @@ tests/              pytest, CPU only
   checks that RTN and SD give identical results either way.
 - **Step index.** The context is set to step 0 before `pipe(...)`. The callback runs after step i, reads
   `pipe.scheduler.sigmas` (T + 1 values, last one 0), and moves the context to step i + 1.
-- **Metric and slopes.** Rows store `rel_err_sq = ||z_q - z_FP||^2 / ||z_FP||^2` (the A5 metric) and its square root
-  `rel_err`. Slopes are fitted on `rel_err`, because the predicted 0, -1/2, -1 are for the size of the error; a fit on
-  the squared error is exactly twice as steep. The T = 50 ratio check uses `rel_err_sq` (config `ratio_metric`).
+- **Metric.** Every check and slope uses the unsquared `rel_err = ||z_q - z_FP|| / ||z_FP||` (the predicted
+  0, -1/2, -1 are for the size of the error). Rows also keep `rel_err_sq`.
 - **Leftover storage default** is fp32 for E1.1 to E1.3, so storage precision does not mix into the go/kill
-  question; E1.4 measures bf16, int8 and int4.
+  question; E1.4 measures bf16, int8 and int4. Integer storage uses the step (s / 2) / (2^(b_r - 1) - 1), so the
+  leftover range |r| <= s / 2 fills the whole code range.
 
 ## Phase A (laptop, CPU)
 
@@ -96,12 +96,15 @@ Outputs: `results/e1_corr.json`, `plots/corr_heatmap.png`, `results/e1_law.csv`,
 `results/b1_sanity.json`. Raw per-prompt data goes to `results/raw/` (not committed); full-precision reference
 latents are cached in `cache/fp/`. Every row and JSON file records the git commit, the config and the seed.
 
-## Decision rules as implemented
+## Decision rules as implemented (confirmed 7 Nov 2026)
 
-The thresholds live in `configs/e1.yaml` under `decision:`. Where the instructions leave a detail open, the report
-states the choice made:
+The thresholds live in `configs/e1.yaml` under `decision:`.
 
-- slope and ratio checks are applied at b = 4;
-- "RTN premise wrong" is a slope at or below -0.5;
-- WEAK is "SD beats RTN at T = 50 and the SD and SR slope intervals overlap", and it takes precedence over GO;
-- the overall KILL uses exactly the two listed rules; an SD slope above -0.3 alone gives UNDECIDED.
+- Every check uses the unsquared rel_err; slope and ratio checks use b = 4 (3-bit is reported, does not decide).
+- SD at T = 50: GO at or below 0.5 x RTN with lower LPIPS; KILL at or above 0.8 x RTN.
+- RTN slope: GO between -0.3 and +0.1; at or below -0.4 the premise is wrong (KILL); between -0.4 and -0.3 gives
+  UNDECIDED.
+- WEAK: SD beats RTN and either the SD and SR slope intervals overlap or SD's error at T = 50 is not lower than
+  SR's. WEAK overrides GO.
+- KILL: cosine below 0.3, SD at or above 0.8 x RTN, or the RTN premise rule. An SD slope above -0.3 alone gives
+  UNDECIDED. UNDECIDED means neither GO nor KILL fired; read the plots.

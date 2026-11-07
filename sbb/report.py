@@ -210,9 +210,8 @@ def decide(corr: dict | None, law_df, abl_df, cfg: dict) -> dict:
             cells["sd_slope"] = {"value": v, "ci": sd, "status": status}
         if sr is not None:
             cells["sr_slope"] = {"value": sr["median"], "ci": sr, "status": "INFO"}
-        metric = dc.get("ratio_metric", "rel_err_sq")
+        metric = dc.get("ratio_metric", "rel_err")
         ratio = _paired_ratio(law_df, "SD", "RTN", bits, T, metric)
-        ratio_norm = _paired_ratio(law_df, "SD", "RTN", bits, T, "rel_err")
         if ratio is not None:
             lp_sd, lp_rtn = _median(law_df, "SD", bits, T, "lpips"), _median(law_df, "RTN", bits, T, "lpips")
             lpips_ok = math.isfinite(lp_sd) and math.isfinite(lp_rtn) and lp_sd < lp_rtn
@@ -223,9 +222,15 @@ def decide(corr: dict | None, law_df, abl_df, cfg: dict) -> dict:
                 status = "GO"
             else:
                 status = "BETWEEN"
-            cells["sd_ratio"] = {"value": v, "metric": metric, "value_rel_err": ratio_norm["median"] if ratio_norm else None,
-                                 "lpips_sd": lp_sd, "lpips_rtn": lp_rtn, "lpips_lower": lpips_ok,
-                                 "n_prompts": ratio["n_prompts"], "status": status}
+            cells["sd_ratio"] = {"value": v, "metric": metric, "lpips_sd": lp_sd, "lpips_rtn": lp_rtn,
+                                 "lpips_lower": lpips_ok, "n_prompts": ratio["n_prompts"], "status": status}
+        sd_sr = _paired_ratio(law_df, "SD", "SR", bits, T, metric)
+        if sd_sr is not None and "sd_slope" in cells and "sr_slope" in cells:
+            sd_ci, sr_ci = cells["sd_slope"]["ci"], cells["sr_slope"]["ci"]
+            overlap = sd_ci["ci_low"] <= sr_ci["ci_high"] and sr_ci["ci_low"] <= sd_ci["ci_high"]
+            not_lower = not (sd_sr["median"] < 1.0)  # SD error at T not lower than SR's (NaN counts as not lower)
+            cells["sd_vs_sr"] = {"overlap": overlap, "sd_over_sr": sd_sr["median"], "not_lower": not_lower,
+                                 "status": "INFO"}
     else:
         missing.append("E1.2 (results/e1_law.csv)")
 
@@ -240,14 +245,15 @@ def decide(corr: dict | None, law_df, abl_df, cfg: dict) -> dict:
         cells["ablation"] = {"per_T": per_t, "status": "OK" if ok else "NOT OK", "informative": True}
 
     # Verdict, in order KILL > WEAK > GO > UNDECIDED.
+    # Overall KILL: cosine below corr_kill, SD at or above sd_ratio_kill x RTN, or RTN slope at or below
+    # rtn_slope_premise_wrong (premise wrong). An SD slope KILL cell alone gives UNDECIDED.
     reasons = []
-    kill = (cells.get("corr", {}).get("status") == "KILL") or (cells.get("sd_ratio", {}).get("status") == "KILL")
+    kill_keys = ("corr", "sd_ratio", "rtn_slope")
+    kill = any(cells.get(k, {}).get("status") == "KILL" for k in kill_keys)
     weak = False
-    if "sd_ratio" in cells and "sd_slope" in cells and "sr_slope" in cells:
-        sd_ci, sr_ci = cells["sd_slope"]["ci"], cells["sr_slope"]["ci"]
-        overlap = sd_ci["ci_low"] <= sr_ci["ci_high"] and sr_ci["ci_low"] <= sd_ci["ci_high"]
-        cells["sd_vs_sr"] = {"overlap": overlap, "status": "INFO"}
-        weak = cells["sd_ratio"]["value"] < 1.0 and overlap
+    vs = cells.get("sd_vs_sr")
+    if "sd_ratio" in cells and vs is not None:
+        weak = cells["sd_ratio"]["value"] < 1.0 and (vs["overlap"] or vs["not_lower"])
     go_cells = ("corr", "rtn_slope", "sd_slope", "sd_ratio")
     all_go = all(cells.get(k, {}).get("status") == "GO" for k in go_cells)
     if missing:
@@ -260,12 +266,21 @@ def decide(corr: dict | None, law_df, abl_df, cfg: dict) -> dict:
         if cells.get("sd_ratio", {}).get("status") == "KILL":
             reasons.append(f"SD error at T = {T} is {_fmt(cells['sd_ratio']['value'])} x RTN, at or above "
                            f"{dc['sd_ratio_kill']}")
+        if cells.get("rtn_slope", {}).get("status") == "KILL":
+            reasons.append(f"RTN slope {_fmt(cells['rtn_slope']['value'], 2)} is at or below "
+                           f"{dc['rtn_slope_premise_wrong']}: plain rounding already improves with steps, so the "
+                           "premise is wrong")
     elif missing:
         pass
     elif weak:
         verdict = "WEAK"
-        reasons.append("SD beats RTN but its slope interval overlaps the SR slope interval, so the gain may come "
-                       "from decorrelation rather than cancellation")
+        why = []
+        if vs["overlap"]:
+            why.append("its slope interval overlaps the SR slope interval")
+        if vs["not_lower"]:
+            why.append(f"its error at T = {T} is not lower than SR's ({_fmt(vs['sd_over_sr'])} x SR)")
+        reasons.append("SD beats RTN but " + " and ".join(why) + ", so the gain may come from decorrelation "
+                       "rather than cancellation")
     elif all_go:
         verdict = "GO"
         reasons.append("every GO cell is met")
@@ -336,8 +351,8 @@ def build_report(cfg: dict, corr: dict | None, law_df, abl_df, overhead: dict | 
              f"{_status_word(c['status'] if c else None)} |")
     c = cells.get("sd_ratio")
     if c:
-        meas = (f"{_fmt(c['value'])} x RTN ({c['metric']}; {_fmt(c['value_rel_err'])} on rel_err); LPIPS SD "
-                f"{_fmt(c['lpips_sd'])} vs RTN {_fmt(c['lpips_rtn'])}")
+        meas = (f"{_fmt(c['value'])} x RTN ({c['metric']}); LPIPS SD {_fmt(c['lpips_sd'])} vs RTN "
+                f"{_fmt(c['lpips_rtn'])}")
     else:
         meas = "not run"
     L.append(f"| E1.2 SD latent error at T = {T}, b = {bits} | {meas} | <= {dc['sd_ratio_go']} x RTN and lower "
@@ -351,26 +366,30 @@ def build_report(cfg: dict, corr: dict | None, law_df, abl_df, overhead: dict | 
              f"informative | {_status_word(c['status'] if c else None)} |")
     c = cells.get("sr_slope")
     if c:
-        ov = cells.get("sd_vs_sr", {}).get("overlap")
-        L.append(f"| SR slope (b = {bits}), for the WEAK rule | {_ci_text(c)} | | | info; SD and SR intervals "
-                 f"overlap: {ov} |")
+        vs = cells.get("sd_vs_sr", {})
+        L.append(f"| SR slope (b = {bits}), for the WEAK rule | {_ci_text(c)}; SD error at T = {T} is "
+                 f"{_fmt(vs.get('sd_over_sr'))} x SR | | | info; intervals overlap: {vs.get('overlap')}; SD not "
+                 f"lower than SR: {vs.get('not_lower')} |")
     L.append("")
 
-    L.append("### How the checks are computed (implementation choices; please confirm)")
+    lo_go, hi_go = dc["rtn_slope_go"]
+    L.append("### How the checks are computed (rules confirmed on 7 Nov 2026)")
     L.append("")
+    L.append("- Error: rel_err = ||z_q - z_FP|| / ||z_FP|| (unsquared) for every check, against FP at the same T. "
+             "The CSV also keeps the squared form rel_err_sq.")
     L.append(f"- Slopes: least squares of log(rel_err) on log(T) for T >= {cfg['fit']['t_min']}, per prompt; the "
-             f"median over prompts with a {cfg['fit']['n_boot']}-sample bootstrap 95% interval. rel_err is "
-             "||z_q - z_FP|| / ||z_FP||, the square root of the primary metric, because the predicted slopes "
-             "(0, -1/2, -1) are for the size of the error. A fit on the squared error gives exactly twice the slope.")
-    L.append(f"- SD versus RTN at T = {T}: median over prompts of the per-prompt ratio of {dc['ratio_metric']} "
-             "(the primary metric of A5, squared). The ratio on rel_err is shown alongside; on the squared metric "
-             "0.5 corresponds to about 0.71 on rel_err. LPIPS check: median LPIPS of SD below that of RTN.")
-    L.append(f"- Slope and ratio checks use b = {bits}; 3-bit results are reported below for information.")
-    L.append(f"- RTN \"premise wrong\" cell: slope <= {dc['rtn_slope_premise_wrong']}.")
-    L.append(f"- WEAK: SD beats RTN at T = {T} (ratio below 1) and the bootstrap intervals of the SD and SR slopes "
-             "overlap. WEAK takes precedence over GO.")
-    L.append("- Overall KILL uses exactly the two rules in the instructions (cosine below 0.3, or SD at or above "
-             "0.8 x RTN). An SD slope above -0.3 shows as a KILL cell but on its own gives UNDECIDED, not KILL.")
+             f"median over prompts with a {cfg['fit']['n_boot']}-sample bootstrap 95% interval.")
+    L.append(f"- SD versus RTN at T = {T}: median over prompts of the per-prompt ratio of {dc['ratio_metric']}. "
+             "LPIPS check: median LPIPS of SD below that of RTN.")
+    L.append(f"- Slope and ratio checks use b = {bits}; 3-bit results are reported below but do not decide.")
+    L.append(f"- RTN slope: GO between {lo_go} and {hi_go}; at or below {dc['rtn_slope_premise_wrong']} the premise "
+             f"is wrong (KILL); between {dc['rtn_slope_premise_wrong']} and {lo_go} gives UNDECIDED.")
+    L.append(f"- WEAK: SD beats RTN at T = {T} and either the bootstrap intervals of the SD and SR slopes overlap or "
+             f"SD's error at T = {T} is not lower than SR's (median per-prompt ratio at or above 1). WEAK overrides "
+             "GO.")
+    L.append(f"- Overall KILL: cosine below {dc['corr_kill']}, SD at or above {dc['sd_ratio_kill']} x RTN, or the "
+             f"RTN premise rule. An SD slope above {dc['sd_slope_kill']} shows as a KILL cell but on its own gives "
+             "UNDECIDED. UNDECIDED means neither GO nor KILL fired; read the plots.")
     L.append("")
 
     # E1.1

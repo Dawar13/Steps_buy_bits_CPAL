@@ -58,12 +58,12 @@ decision:
   corr_go: 0.5          # median lag-1 leftover cosine >= 0.5
   corr_kill: 0.3        # < 0.3
   rtn_slope_go: [-0.3, 0.1]
-  rtn_slope_premise_wrong: -0.5   # "if RTN already falls like -0.5"; implemented as slope <= -0.5
+  rtn_slope_premise_wrong: -0.4   # slope <= -0.4: premise wrong (KILL); -0.4 < slope < -0.3: UNDECIDED (7 Nov)
   sd_slope_go: -0.6     # <= -0.6
   sd_slope_kill: -0.3   # > -0.3
   sd_ratio_go: 0.5      # SD error at T = 50 <= 0.5 x RTN (and lower LPIPS)
   sd_ratio_kill: 0.8    # >= 0.8 x RTN
-  ratio_metric: rel_err_sq   # the primary metric of A5; rel_err is reported alongside
+  ratio_metric: rel_err      # unsquared ||z_q - z_FP|| / ||z_FP|| for every check (7 Nov)
 
 tiny:
   height: 32
