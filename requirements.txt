@@ -1,0 +1,19 @@
+# VM (Linux, H100). On Linux, `pip install torch` from PyPI installs a CUDA build; if the VM driver needs a
+# specific CUDA version, install torch first from https://download.pytorch.org/whl/<cuXXX> (verify), then this file.
+torch>=2.4
+diffusers==0.42.1            # the version the code and tests were checked against
+transformers
+accelerate
+sentencepiece
+protobuf
+huggingface_hub>=1.32,<2.0   # diffusers 0.42 needs >=1.32; current transformers needs <2.0
+datasets
+lpips
+numpy
+pandas
+matplotlib
+scipy
+pyyaml
+pytest
+tqdm
+pillow

@@ -1,0 +1,82 @@
+# E1 configuration (FLUX.1-dev, activation-only fake quantisation, weights stay BF16).
+# Command-line flags override these values; `--tiny` merges the `tiny:` section on top.
+
+model_id: black-forest-labs/FLUX.1-dev
+height: 512
+width: 512
+guidance: 3.5
+max_sequence_length: 512
+group_size: 64
+storage: fp32          # leftover buffer precision for E1.2 and E1.3 (E1.4 varies it)
+share_inputs: true     # quantise inputs read by several linears (to_q/k/v, proj_mlp) once
+mem_fraction: 0.5      # torch.cuda.set_per_process_memory_fraction; the GPU is shared
+embeds: cache/prompt_embeds.pt
+prompts: prompts.txt
+out_dir: results
+plot_dir: plots
+cache_dir: cache
+
+corr:                  # E1.1
+  mode: RTN
+  bits: 4
+  steps: 50
+  n_prompts: 8
+  n_entries: 65536
+  lags: [1, 2, 5, 10]
+  seed: 0
+
+law:                   # E1.2
+  steps: [8, 16, 28, 50, 100]
+  modes: [RTN, SR, SD]  # FP is the reference at every T
+  bits: [4, 3]
+  n_prompts: 32
+  lpips: true
+
+ablation:              # E1.3
+  steps: [28, 50]
+  modes: [SD, SD_UNSCALED]
+  bits: [4]
+  n_prompts: 32
+  lpips: true
+
+overhead:              # E1.4
+  storages: [fp32, bf16, int8, int4]
+  bits: 4
+  steps: 50
+  n_prompts: 4
+  timing_modes: [FP, RTN]   # SD is timed once per storage
+
+fit:
+  t_min: 16
+  n_boot: 2000
+  seed: 0
+
+# Decision table (E1_INSTRUCTIONS.md B3). Do not change without asking.
+decision:
+  bits: 4               # bit width at which the slope and ratio checks are applied
+  ratio_T: 50
+  corr_go: 0.5          # median lag-1 leftover cosine >= 0.5
+  corr_kill: 0.3        # < 0.3
+  rtn_slope_go: [-0.3, 0.1]
+  rtn_slope_premise_wrong: -0.5   # "if RTN already falls like -0.5"; implemented as slope <= -0.5
+  sd_slope_go: -0.6     # <= -0.6
+  sd_slope_kill: -0.3   # > -0.3
+  sd_ratio_go: 0.5      # SD error at T = 50 <= 0.5 x RTN (and lower LPIPS)
+  sd_ratio_kill: 0.8    # >= 0.8 x RTN
+  ratio_metric: rel_err_sq   # the primary metric of A5; rel_err is reported alongside
+
+tiny:
+  height: 32
+  width: 32
+  max_sequence_length: 8
+  embeds: cache_tiny/prompt_embeds.pt
+  prompts: prompts_tiny.txt
+  out_dir: results_tiny
+  plot_dir: plots_tiny
+  cache_dir: cache_tiny
+  corr: {steps: 12, n_prompts: 2, n_entries: 4096}
+  law: {steps: [4, 8, 16], n_prompts: 2, lpips: false}
+  ablation: {steps: [4, 8], n_prompts: 2, lpips: false}
+  overhead: {steps: 8, n_prompts: 1}
+  fit: {t_min: 4, n_boot: 200}
+  decision: {ratio_T: 8}
