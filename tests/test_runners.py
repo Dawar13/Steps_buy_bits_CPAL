@@ -67,6 +67,11 @@ def test_all_runners_end_to_end(dirs):
     assert load_script("run_e1_ablation").main(common) == 0
     abl = _rows(d["results"] / "e1_ablation.csv")
     assert {r["mode"] for r in abl} == {"SD", "SD_UNSCALED"} and len(abl) == 2 * 2 * 2
+    reused = [r for r in abl if r["source"].startswith("reused")]
+    assert len(reused) == 4 and {r["mode"] for r in reused} == {"SD"}  # identical E1.2 runs are not repeated
+    law_sd = {(r["prompt_id"], r["T"]): r["rel_err"] for r in rows if r["mode"] == "SD" and r["bits"] == "4"}
+    assert all(law_sd[(r["prompt_id"], r["T"])] == r["rel_err"] for r in reused)
+    assert all(r["experiment"] == "E1.3" for r in abl)
 
     assert load_script("run_e1_overhead").main(common) == 0
     ov = json.loads((d["results"] / "e1_overhead.json").read_text())

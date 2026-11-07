@@ -12,7 +12,7 @@ import sys
 import _bootstrap  # noqa: F401
 import torch
 
-from sbb.flux import generate, generate_stock
+from sbb.flux import decode, generate, generate_stock
 from sbb.metrics import rel_err_sq
 from sbb.runtime import add_common_args, build_env, now, write_json
 from sbb.wrap import unwrap_transformer, wrap_transformer
@@ -44,6 +44,8 @@ def main(argv=None) -> int:
     z_sd0 = generate(env.pipe, env.ctx, item, T, h, w, g).latent
     env.ctx.gamma_override = None
     sd = generate(env.pipe, env.ctx, item, T, h, w, g)
+    decode(env.pipe, sd.latent, h, w)  # with the leftover buffers still allocated: the peak a worker reaches
+    peak_gb = torch.cuda.max_memory_allocated() / 1e9 if torch.device(env.device).type == "cuda" else None
     env.ctx.configure(mode="FP")
 
     e_fp = rel_err_sq(z_fp, z_stock)
@@ -62,7 +64,9 @@ def main(argv=None) -> int:
     out = env.out_dir / "b1_sanity.json"
     write_json(out, {"checks": checks, "all_pass": ok, "prompt_id": item.pid, "T": T, "bits": args.bits,
                      "sigmas": sd.sigmas, "gammas": sd.gammas, "git": env.meta["git"], "env": env.meta["env"],
-                     "n_wrapped": len(env.wrapped), "finished": now(), "tiny": env.tiny})
+                     "n_wrapped": len(env.wrapped), "finished": now(), "tiny": env.tiny, "peak_gb": peak_gb,
+                     "storage": env.cfg["storage"]})
+    print(f"peak GPU memory (one process, SD with {env.cfg['storage']} leftovers, decode): {peak_gb}")
     for k, v in checks.items():
         print(k, v)
     print(f"wrote {out}: {'ALL PASS' if ok else 'FAILED'}")

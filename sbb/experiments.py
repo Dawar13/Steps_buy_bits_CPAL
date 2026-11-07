@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import logging
 import statistics
 from pathlib import Path
@@ -12,15 +13,17 @@ import torch
 from .corr import CorrRecorder, summarize
 from .flux import decode, generate
 from .metrics import LPIPSMetric, psnr, rel_err_sq
-from .runtime import Env, append_row, done_keys, now, read_json, write_json
+from .runtime import Env, append_row, atomic_torch_save, done_keys, now, read_json, write_json
 from .wrap import buffer_nbytes, quant_states
 
 log = logging.getLogger("sbb.exp")
 
 GRID_FIELDS = ["experiment", "prompt_id", "seed", "T", "mode", "bits", "storage", "group_size", "share_inputs",
                "rel_err_sq", "rel_err", "psnr", "lpips", "seconds", "height", "width", "guidance", "model_id",
-               "tiny", "git_commit", "git_dirty", "timestamp"]
+               "tiny", "git_commit", "git_dirty", "timestamp", "source"]
 GRID_KEY = ["prompt_id", "T", "mode", "bits", "storage"]
+# A row computed in one experiment can stand in for another only if all of these match.
+SAME_RUN = GRID_KEY + ["group_size", "share_inputs", "height", "width", "guidance", "model_id", "tiny"]
 
 
 def storage_label(mode: str, storage: str) -> str:
@@ -42,8 +45,7 @@ def fp_reference(env: Env, item, num_steps: int) -> torch.Tensor:
         log.warning("FP cache %s does not match the run settings; recomputing", path.name)
     env.ctx.configure(mode="FP")
     res = generate(env.pipe, env.ctx, item, num_steps, h, w, g)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"latent": res.latent, "meta": meta, "sigmas": res.sigmas, "git": env.meta["git"]}, path)
+    atomic_torch_save({"latent": res.latent, "meta": meta, "sigmas": res.sigmas, "git": env.meta["git"]}, path)
     return res.latent
 
 
@@ -85,7 +87,7 @@ def run_grid(env: Env, experiment: str, modes: list[str], bits_list: list[int], 
                        "psnr": psnr(img, img_fp), "lpips": lp(img, img_fp) if lp is not None else float("nan"),
                        "seconds": res.seconds, "height": h, "width": w, "guidance": g,
                        "model_id": env.cfg["model_id"], "tiny": env.tiny, "git_commit": env.meta["git"]["commit"],
-                       "git_dirty": env.meta["git"]["dirty"], "timestamp": now()}
+                       "git_dirty": env.meta["git"]["dirty"], "timestamp": now(), "source": "computed"}
                 append_row(out_csv, row, GRID_FIELDS)
                 count += 1
                 log.info("[%s %d/%d] prompt %d T=%d %s b=%d: rel_err=%.4g psnr=%.2f lpips=%.4g (%.1fs)",
@@ -95,10 +97,52 @@ def run_grid(env: Env, experiment: str, modes: list[str], bits_list: list[int], 
     return pd.read_csv(out_csv)
 
 
+def _write_meta(env: Env, name: str) -> None:
+    """Latest run's metadata, plus one file per process (parallel workers each keep their own)."""
+    write_json(env.out_dir / f"{name}_meta.json", env.meta)
+    write_json(env.out_dir / "meta" / f"{name}_{env.meta['started'].replace(':', '')}_{os.getpid()}.json", env.meta)
+
+
+def reuse_rows(src_csv: Path, dst_csv: Path, experiment: str, modes: list[str], bits_list: list[int],
+               steps: list[int], prompt_ids: list[int], cfg: dict) -> int:
+    """Copy rows of an identical computation (same SAME_RUN fields) from another experiment's CSV.
+
+    Used for E1.3: its SD rows at b = 4, T = 28 and 50 are exactly the E1.2 SD runs (deterministic), so
+    only SD_UNSCALED is new work. Copied rows are marked source = "reused:<file>".
+    """
+    import pandas as pd
+
+    if not src_csv.exists():
+        return 0
+    src = pd.read_csv(src_csv, dtype=str, keep_default_na=False)
+    done = done_keys(dst_csv, GRID_KEY)
+    want = {"group_size": str(cfg["group_size"]), "share_inputs": str(bool(cfg["share_inputs"])),
+            "height": str(cfg["height"]), "width": str(cfg["width"]), "guidance": str(float(cfg["guidance"])),
+            "model_id": str(cfg["model_id"]), "tiny": str(bool(cfg.get("tiny")))}
+    n = 0
+    for _, r in src.iterrows():
+        if (r["mode"] not in modes or int(r["bits"]) not in bits_list or int(r["T"]) not in steps
+                or int(r["prompt_id"]) not in prompt_ids):
+            continue
+        if r["storage"] != storage_label(r["mode"], cfg["storage"]):
+            continue
+        if any(r[k] != v for k, v in want.items()):
+            continue
+        key = tuple(str(r[k]) for k in GRID_KEY)
+        if key in done:
+            continue
+        row = dict(r)
+        row.update({"experiment": experiment, "source": f"reused:{src_csv.name}"})
+        append_row(dst_csv, row, GRID_FIELDS)
+        done.add(key)
+        n += 1
+    return n
+
+
 def run_law(env: Env) -> Path:
     sec = env.cfg["law"]
     out_csv = env.out_dir / "e1_law.csv"
-    write_json(env.out_dir / "e1_law_meta.json", env.meta)
+    _write_meta(env, "e1_law")
     df = run_grid(env, "E1.2", list(sec["modes"]), [int(b) for b in sec["bits"]], [int(t) for t in sec["steps"]],
                   out_csv, bool(sec.get("lpips", True)))
     from .report import plot_law
@@ -112,9 +156,13 @@ def run_law(env: Env) -> Path:
 def run_ablation(env: Env) -> Path:
     sec = env.cfg["ablation"]
     out_csv = env.out_dir / "e1_ablation.csv"
-    write_json(env.out_dir / "e1_ablation_meta.json", env.meta)
-    run_grid(env, "E1.3", list(sec["modes"]), [int(b) for b in sec["bits"]], [int(t) for t in sec["steps"]],
-             out_csv, bool(sec.get("lpips", True)))
+    _write_meta(env, "e1_ablation")
+    modes, bits, steps = list(sec["modes"]), [int(b) for b in sec["bits"]], [int(t) for t in sec["steps"]]
+    if sec.get("reuse_law", True):
+        n = reuse_rows(env.out_dir / "e1_law.csv", out_csv, "E1.3", modes, bits, steps,
+                       [it.pid for it in env.prompts], env.cfg)
+        log.info("[E1.3] reused %d identical rows from e1_law.csv", n)
+    run_grid(env, "E1.3", modes, bits, steps, out_csv, bool(sec.get("lpips", True)))
     return out_csv
 
 

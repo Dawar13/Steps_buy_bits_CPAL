@@ -87,7 +87,7 @@ def now() -> str:
 def write_json(path: str | os.PathLike, obj: Any) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(_jsonable(obj), f, indent=2, allow_nan=False)
     os.replace(tmp, path)
@@ -112,18 +112,50 @@ def _jsonable(x: Any) -> Any:
     return x
 
 
+def _lock(f, exclusive: bool = True) -> None:
+    try:
+        import fcntl  # POSIX only; the parallel workers run on Linux
+    except ImportError:
+        return
+    fcntl.flock(f.fileno(), fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+
+
+def _unlock(f) -> None:
+    try:
+        import fcntl
+    except ImportError:
+        return
+    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
 def append_row(path: str | os.PathLike, row: dict, fields: list[str]) -> None:
-    """Append one result row and flush, writing the header if the file is new."""
+    """Append one result row and flush, writing the header if the file is new.
+
+    Takes an exclusive file lock, so several worker processes can append to the same CSV.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    new = not path.exists() or path.stat().st_size == 0
     with open(path, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields, extrasaction="raise")
-        if new:
-            w.writeheader()
-        w.writerow({k: row.get(k, "") for k in fields})
-        f.flush()
-        os.fsync(f.fileno())
+        _lock(f)
+        try:
+            f.seek(0, os.SEEK_END)
+            new = f.tell() == 0
+            w = csv.DictWriter(f, fieldnames=fields, extrasaction="raise")
+            if new:
+                w.writeheader()
+            w.writerow({k: row.get(k, "") for k in fields})
+            f.flush()
+            os.fsync(f.fileno())
+        finally:
+            _unlock(f)
+
+
+def atomic_torch_save(obj: Any, path: str | os.PathLike) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    torch.save(obj, tmp)
+    os.replace(tmp, path)
 
 
 def done_keys(path: str | os.PathLike, key_fields: Iterable[str]) -> set[tuple]:

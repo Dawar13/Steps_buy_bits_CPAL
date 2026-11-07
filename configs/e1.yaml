@@ -35,6 +35,7 @@ law:                   # E1.2
 ablation:              # E1.3
   steps: [28, 50]
   modes: [SD, SD_UNSCALED]
+  reuse_law: true     # SD rows identical to E1.2 are copied (marked source = reused), only SD_UNSCALED runs
   bits: [4]
   n_prompts: 32
   lpips: true
