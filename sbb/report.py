@@ -442,6 +442,13 @@ def build_report(cfg: dict, corr: dict | None, law_df, abl_df, overhead: dict | 
         n_p = law_df["prompt_id"].nunique()
         L.append(f"{n_p} prompts. Median relative latent error rel_err over prompts (FP at the same T is the "
                  "reference):")
+        bad = law_df[~np.isfinite(law_df["rel_err"].astype(float))]
+        if len(bad):
+            runs = "; ".join(f"prompt {int(r.prompt_id)}, T = {int(r.T)}, {r.mode}, b = {int(r.bits)}"
+                             for r in bad.itertuples())
+            L.append("")
+            L.append(f"{len(bad)} of {len(law_df)} runs ended with a non-finite latent and are left out of the "
+                     f"medians, slopes and ratios: {runs}.")
         for b in sorted(law_df["bits"].unique(), reverse=True):
             d = law_df[law_df["bits"] == b]
             ts = sorted(d["T"].unique())
