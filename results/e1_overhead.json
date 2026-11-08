@@ -1,0 +1,406 @@
+{
+  "settings": {
+    "T": 50,
+    "bits": 4,
+    "height": 512,
+    "width": 512,
+    "guidance": 3.5,
+    "model_id": "black-forest-labs/FLUX.1-dev",
+    "group_size": 64,
+    "share_inputs": true,
+    "prompt_ids": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "tiny": false
+  },
+  "runs": {
+    "FP": {
+      "mode": "FP",
+      "storage": null,
+      "per_prompt": [
+        {
+          "prompt_id": 0,
+          "rel_err_sq": 0.0,
+          "rel_err": 0.0,
+          "peak_bytes": 24153137664,
+          "buffer_bytes": 0,
+          "buffer_bytes_if_unshared": 0,
+          "buffer_entries": 0,
+          "step_seconds_median": 0.3208043129998259,
+          "seconds": 17.53209987000082
+        },
+        {
+          "prompt_id": 1,
+          "rel_err_sq": 0.0,
+          "rel_err": 0.0,
+          "peak_bytes": 24153137664,
+          "buffer_bytes": 0,
+          "buffer_bytes_if_unshared": 0,
+          "buffer_entries": 0,
+          "step_seconds_median": 0.31948558499789215,
+          "seconds": 17.269487478002702
+        },
+        {
+          "prompt_id": 2,
+          "rel_err_sq": 0.0,
+          "rel_err": 0.0,
+          "peak_bytes": 24153137664,
+          "buffer_bytes": 0,
+          "buffer_bytes_if_unshared": 0,
+          "buffer_entries": 0,
+          "step_seconds_median": 0.321612791998632,
+          "seconds": 17.324505871001747
+        },
+        {
+          "prompt_id": 3,
+          "rel_err_sq": 0.0,
+          "rel_err": 0.0,
+          "peak_bytes": 24153137664,
+          "buffer_bytes": 0,
+          "buffer_bytes_if_unshared": 0,
+          "buffer_entries": 0,
+          "step_seconds_median": 0.3232593629982148,
+          "seconds": 17.444704567998997
+        }
+      ],
+      "rel_err_sq_median": 0.0,
+      "rel_err_median": 0.0,
+      "step_seconds_median": 0.32120855249922897,
+      "peak_bytes_max": 24153137664,
+      "buffer_bytes": 0,
+      "buffer_bytes_if_unshared": 0,
+      "buffer_entries": 0
+    },
+    "RTN": {
+      "mode": "RTN",
+      "storage": null,
+      "per_prompt": [
+        {
+          "prompt_id": 0,
+          "rel_err_sq": 0.11328058048484947,
+          "rel_err": 0.3365718058376986,
+          "peak_bytes": 24400175616,
+          "buffer_bytes": 0,
+          "buffer_bytes_if_unshared": 0,
+          "buffer_entries": 0,
+          "step_seconds_median": 0.48120229200139875,
+          "seconds": 26.00878822499726
+        },
+        {
+          "prompt_id": 1,
+          "rel_err_sq": 0.497369231016776,
+          "rel_err": 0.7052440932165089,
+          "peak_bytes": 24400175616,
+          "buffer_bytes": 0,
+          "buffer_bytes_if_unshared": 0,
+          "buffer_entries": 0,
+          "step_seconds_median": 0.4812310470006196,
+          "seconds": 25.994697525999072
+        },
+        {
+          "prompt_id": 2,
+          "rel_err_sq": 0.11183679536211867,
+          "rel_err": 0.3344200881557785,
+          "peak_bytes": 24400175616,
+          "buffer_bytes": 0,
+          "buffer_bytes_if_unshared": 0,
+          "buffer_entries": 0,
+          "step_seconds_median": 0.4808128349977778,
+          "seconds": 25.7584314980013
+        },
+        {
+          "prompt_id": 3,
+          "rel_err_sq": 0.09694948211475085,
+          "rel_err": 0.3113671179086688,
+          "peak_bytes": 24400175616,
+          "buffer_bytes": 0,
+          "buffer_bytes_if_unshared": 0,
+          "buffer_entries": 0,
+          "step_seconds_median": 0.48092645699944114,
+          "seconds": 25.97747932800121
+        }
+      ],
+      "rel_err_sq_median": 0.11255868792348407,
+      "rel_err_median": 0.33549594699673857,
+      "step_seconds_median": 0.48106437450041994,
+      "peak_bytes_max": 24400175616,
+      "buffer_bytes": 0,
+      "buffer_bytes_if_unshared": 0,
+      "buffer_entries": 0
+    },
+    "SD_fp32": {
+      "mode": "SD",
+      "storage": "fp32",
+      "per_prompt": [
+        {
+          "prompt_id": 0,
+          "rel_err_sq": 0.15410812072734525,
+          "rel_err": 0.3925660717985512,
+          "peak_bytes": 31356330496,
+          "buffer_bytes": 6813646848,
+          "buffer_bytes_if_unshared": 9682550784,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.5909958769989316,
+          "seconds": 31.785887796999305
+        },
+        {
+          "prompt_id": 1,
+          "rel_err_sq": 0.29633515833729623,
+          "rel_err": 0.5443667498454478,
+          "peak_bytes": 31356330496,
+          "buffer_bytes": 6813646848,
+          "buffer_bytes_if_unshared": 9682550784,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.5918545770000492,
+          "seconds": 32.19344596799783
+        },
+        {
+          "prompt_id": 2,
+          "rel_err_sq": 0.15163583006859546,
+          "rel_err": 0.38940445563526294,
+          "peak_bytes": 31356330496,
+          "buffer_bytes": 6813646848,
+          "buffer_bytes_if_unshared": 9682550784,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.5929472310017445,
+          "seconds": 31.91081355499773
+        },
+        {
+          "prompt_id": 3,
+          "rel_err_sq": 0.02042100060513439,
+          "rel_err": 0.1429020664830792,
+          "peak_bytes": 31356330496,
+          "buffer_bytes": 6813646848,
+          "buffer_bytes_if_unshared": 9682550784,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.5911593839991838,
+          "seconds": 32.04146212300111
+        }
+      ],
+      "rel_err_sq_median": 0.15287197539797037,
+      "rel_err_median": 0.39098526371690706,
+      "step_seconds_median": 0.5915069804996165,
+      "peak_bytes_max": 31356330496,
+      "buffer_bytes": 6813646848,
+      "buffer_bytes_if_unshared": 9682550784,
+      "buffer_entries": 1703411712
+    },
+    "SD_bf16": {
+      "mode": "SD",
+      "storage": "bf16",
+      "per_prompt": [
+        {
+          "prompt_id": 0,
+          "rel_err_sq": 0.15038388140309286,
+          "rel_err": 0.3877936067073474,
+          "peak_bytes": 30800275456,
+          "buffer_bytes": 3406823424,
+          "buffer_bytes_if_unshared": 4841275392,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.6064622250014509,
+          "seconds": 32.721461483000894
+        },
+        {
+          "prompt_id": 1,
+          "rel_err_sq": 0.36935570697670134,
+          "rel_err": 0.6077464166712144,
+          "peak_bytes": 28043878912,
+          "buffer_bytes": 3406823424,
+          "buffer_bytes_if_unshared": 4841275392,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.6082701659979648,
+          "seconds": 33.06447793299958
+        },
+        {
+          "prompt_id": 2,
+          "rel_err_sq": 0.1603962218160592,
+          "rel_err": 0.4004949710246799,
+          "peak_bytes": 28043878912,
+          "buffer_bytes": 3406823424,
+          "buffer_bytes_if_unshared": 4841275392,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.6087493849991006,
+          "seconds": 33.40354324299915
+        },
+        {
+          "prompt_id": 3,
+          "rel_err_sq": 0.017587170824937447,
+          "rel_err": 0.13261663102694718,
+          "peak_bytes": 28043878912,
+          "buffer_bytes": 3406823424,
+          "buffer_bytes_if_unshared": 4841275392,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.6693162840019795,
+          "seconds": 33.78612776199952
+        }
+      ],
+      "rel_err_sq_median": 0.15539005160957603,
+      "rel_err_median": 0.39414428886601366,
+      "step_seconds_median": 0.6085097754985327,
+      "peak_bytes_max": 30800275456,
+      "buffer_bytes": 3406823424,
+      "buffer_bytes_if_unshared": 4841275392,
+      "buffer_entries": 1703411712
+    },
+    "SD_int8": {
+      "mode": "SD",
+      "storage": "int8",
+      "per_prompt": [
+        {
+          "prompt_id": 0,
+          "rel_err_sq": 0.16502875364172642,
+          "rel_err": 0.406237311976296,
+          "peak_bytes": 27393976320,
+          "buffer_bytes": 1756643328,
+          "buffer_bytes_if_unshared": 2496282624,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.7361477990016283,
+          "seconds": 38.50778885199907
+        },
+        {
+          "prompt_id": 1,
+          "rel_err_sq": 0.4481192466717317,
+          "rel_err": 0.6694170946963721,
+          "peak_bytes": 26490872320,
+          "buffer_bytes": 1756643328,
+          "buffer_bytes_if_unshared": 2496282624,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.7030227959985496,
+          "seconds": 38.191832701999374
+        },
+        {
+          "prompt_id": 2,
+          "rel_err_sq": 0.15822802398131347,
+          "rel_err": 0.3977788631655954,
+          "peak_bytes": 26490872320,
+          "buffer_bytes": 1756643328,
+          "buffer_bytes_if_unshared": 2496282624,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.7012763289967552,
+          "seconds": 37.686479157000576
+        },
+        {
+          "prompt_id": 3,
+          "rel_err_sq": 0.019946614257239908,
+          "rel_err": 0.1412324830102477,
+          "peak_bytes": 26490872320,
+          "buffer_bytes": 1756643328,
+          "buffer_bytes_if_unshared": 2496282624,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.7021075550001115,
+          "seconds": 37.59794171899921
+        }
+      ],
+      "rel_err_sq_median": 0.16162838881151995,
+      "rel_err_median": 0.4020080875709457,
+      "step_seconds_median": 0.7025651754993305,
+      "peak_bytes_max": 27393976320,
+      "buffer_bytes": 1756643328,
+      "buffer_bytes_if_unshared": 2496282624,
+      "buffer_entries": 1703411712
+    },
+    "SD_int4": {
+      "mode": "SD",
+      "storage": "int4",
+      "per_prompt": [
+        {
+          "prompt_id": 0,
+          "rel_err_sq": 0.16644276977019473,
+          "rel_err": 0.40797398173191723,
+          "peak_bytes": 25743271936,
+          "buffer_bytes": 904937472,
+          "buffer_bytes_if_unshared": 1285963776,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.8079023309983313,
+          "seconds": 43.08012299799884
+        },
+        {
+          "prompt_id": 1,
+          "rel_err_sq": 0.4404325324259228,
+          "rel_err": 0.6636509115686671,
+          "peak_bytes": 25709224448,
+          "buffer_bytes": 904937472,
+          "buffer_bytes_if_unshared": 1285963776,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.81039674099884,
+          "seconds": 43.27682830300182
+        },
+        {
+          "prompt_id": 2,
+          "rel_err_sq": 0.15951280370074838,
+          "rel_err": 0.3993905403245655,
+          "peak_bytes": 25709224448,
+          "buffer_bytes": 904937472,
+          "buffer_bytes_if_unshared": 1285963776,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.8062159330002032,
+          "seconds": 43.024856461001036
+        },
+        {
+          "prompt_id": 3,
+          "rel_err_sq": 0.02163737729569237,
+          "rel_err": 0.1470964897463307,
+          "peak_bytes": 25709224448,
+          "buffer_bytes": 904937472,
+          "buffer_bytes_if_unshared": 1285963776,
+          "buffer_entries": 1703411712,
+          "step_seconds_median": 0.8066241830019862,
+          "seconds": 43.282508480002434
+        }
+      ],
+      "rel_err_sq_median": 0.16297778673547156,
+      "rel_err_median": 0.40368226102824134,
+      "step_seconds_median": 0.8072632570001588,
+      "peak_bytes_max": 25743271936,
+      "buffer_bytes": 904937472,
+      "buffer_bytes_if_unshared": 1285963776,
+      "buffer_entries": 1703411712
+    }
+  },
+  "git": {
+    "commit": "e8398df20ab51e156fd0c06014c53a183824a108",
+    "dirty": false
+  },
+  "env": {
+    "python": "3.12.3",
+    "platform": "Linux-7.0.0-1014-gcp-x86_64-with-glibc2.39",
+    "torch": "2.11.0+cu128",
+    "diffusers": "0.42.1",
+    "cuda_device": "NVIDIA A100-SXM4-80GB",
+    "cuda": "12.8"
+  },
+  "derived": {
+    "FP": {
+      "extra_peak_bytes_vs_RTN": -247037952,
+      "step_time_ratio_vs_RTN": 0.6677038864763173
+    },
+    "RTN": {
+      "extra_peak_bytes_vs_RTN": 0,
+      "step_time_ratio_vs_RTN": 1.0
+    },
+    "SD_fp32": {
+      "extra_peak_bytes_vs_RTN": 6956154880,
+      "step_time_ratio_vs_RTN": 1.2295796817502647,
+      "rel_err_ratio_vs_RTN": 1.165394894385141
+    },
+    "SD_bf16": {
+      "extra_peak_bytes_vs_RTN": 6400099840,
+      "step_time_ratio_vs_RTN": 1.2649237976319976,
+      "rel_err_ratio_vs_RTN": 1.1748108804123503
+    },
+    "SD_int8": {
+      "extra_peak_bytes_vs_RTN": 2993800704,
+      "step_time_ratio_vs_RTN": 1.4604390030522145,
+      "rel_err_ratio_vs_RTN": 1.1982502059103972
+    },
+    "SD_int4": {
+      "extra_peak_bytes_vs_RTN": 1343096320,
+      "step_time_ratio_vs_RTN": 1.67807740458539,
+      "rel_err_ratio_vs_RTN": 1.2032403510143317
+    }
+  },
+  "finished": "2026-11-07T22:17:36Z"
+}

@@ -1,0 +1,157 @@
+{
+  "script": "run_e1_ablation",
+  "section": "ablation",
+  "started": "2026-11-07T21:44:23Z",
+  "git": {
+    "commit": "e8398df20ab51e156fd0c06014c53a183824a108",
+    "dirty": false
+  },
+  "env": {
+    "python": "3.12.3",
+    "platform": "Linux-7.0.0-1014-gcp-x86_64-with-glibc2.39",
+    "torch": "2.11.0+cu128",
+    "diffusers": "0.42.1",
+    "cuda_device": "NVIDIA A100-SXM4-80GB",
+    "cuda": "12.8"
+  },
+  "device": "cuda",
+  "prompt_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+  ],
+  "config": {
+    "model_id": "black-forest-labs/FLUX.1-dev",
+    "height": 512,
+    "width": 512,
+    "guidance": 3.5,
+    "max_sequence_length": 512,
+    "group_size": 64,
+    "storage": "fp32",
+    "share_inputs": true,
+    "mem_fraction": 0.5,
+    "embeds": "cache/prompt_embeds.pt",
+    "prompts": "prompts.txt",
+    "out_dir": "results",
+    "plot_dir": "plots",
+    "cache_dir": "cache",
+    "corr": {
+      "mode": "RTN",
+      "bits": 4,
+      "steps": 50,
+      "n_prompts": 8,
+      "n_entries": 65536,
+      "lags": [
+        1,
+        2,
+        5,
+        10
+      ],
+      "seed": 0
+    },
+    "law": {
+      "steps": [
+        8,
+        16,
+        28,
+        50,
+        100
+      ],
+      "modes": [
+        "RTN",
+        "SR",
+        "SD"
+      ],
+      "bits": [
+        4,
+        3
+      ],
+      "n_prompts": 32,
+      "lpips": true
+    },
+    "ablation": {
+      "steps": [
+        28,
+        50
+      ],
+      "modes": [
+        "SD",
+        "SD_UNSCALED"
+      ],
+      "reuse_law": true,
+      "bits": [
+        4
+      ],
+      "n_prompts": 32,
+      "lpips": true
+    },
+    "overhead": {
+      "storages": [
+        "fp32",
+        "bf16",
+        "int8",
+        "int4"
+      ],
+      "bits": 4,
+      "steps": 50,
+      "n_prompts": 4,
+      "timing_modes": [
+        "FP",
+        "RTN"
+      ]
+    },
+    "fit": {
+      "t_min": 16,
+      "n_boot": 2000,
+      "seed": 0
+    },
+    "decision": {
+      "bits": 4,
+      "ratio_T": 50,
+      "corr_go": 0.5,
+      "corr_kill": 0.3,
+      "rtn_slope_go": [
+        -0.3,
+        0.1
+      ],
+      "rtn_slope_premise_wrong": -0.4,
+      "sd_slope_go": -0.6,
+      "sd_slope_kill": -0.3,
+      "sd_ratio_go": 0.5,
+      "sd_ratio_kill": 0.8,
+      "ratio_metric": "rel_err"
+    },
+    "tiny": false
+  },
+  "n_wrapped": 418,
+  "argv": []
+}
