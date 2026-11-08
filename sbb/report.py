@@ -72,9 +72,6 @@ def plot_law(df, bits: int, path: Path, t_min: float = 16, tiny: bool = False, m
         row = summ[summ["mode"] == mode]
         slope = float(row["slope_median"].iloc[0]) if not row.empty else float("nan")
         ends.append((ts[-1], med[-1], f"{mode}  slope {_fmt(slope, 2)}"))
-    # Direct labels at the line ends, in ink (identity is carried by the marks and the legend).
-    for x, y, text in ends:
-        ax.annotate(text, (x, y), xytext=(6, 0), textcoords="offset points", va="center", fontsize=9, color=INK)
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.axvline(t_min, color=AXIS, linewidth=1, linestyle=":")
@@ -87,9 +84,22 @@ def plot_law(df, bits: int, path: Path, t_min: float = 16, tiny: bool = False, m
     ax.set_xlim(ts_all[0] * 0.85, ts_all[-1] * 2.2)
     from matplotlib.ticker import FuncFormatter, LogLocator, NullFormatter
 
-    ax.yaxis.set_major_locator(LogLocator(base=10, subs=(1.0, 2.0, 5.0)))
+    ylo, yhi = ax.get_ylim()
+    decades = math.log10(yhi) - math.log10(ylo)
+    subs = (1.0, 2.0, 5.0) if decades > 1.0 else (1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0)
+    ax.yaxis.set_major_locator(LogLocator(base=10, subs=subs))
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
     ax.yaxis.set_minor_formatter(NullFormatter())
+    # Direct labels at the line ends, in ink, nudged apart so they never overlap.
+    gap = 0.06 * decades
+    placed = []
+    for x, y, text in sorted(ends, key=lambda e: e[1]):
+        ly = math.log10(y)
+        if placed and ly - placed[-1] < gap:
+            ly = placed[-1] + gap
+        placed.append(ly)
+        ax.annotate(text, (x, y), xytext=(x * 1.08, 10 ** ly), textcoords="data", va="center", fontsize=9,
+                    color=INK)
     ax.set_xlabel("sampling steps T")
     ax.set_ylabel("relative latent error ||z_q - z_FP|| / ||z_FP||")
     title = (("TINY TEST MODEL. " if tiny else "") + f"Error versus steps, {bits}-bit activations\n"
